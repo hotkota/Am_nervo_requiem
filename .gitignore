@@ -1,0 +1,4 @@
+.env
+__pycache__/*
+cogs/__pycache__/*
+Qwen3-1.7B-Q8_0.gguf
