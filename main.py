@@ -13,20 +13,14 @@ load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True
 
-
 class MruaBot(commands.Bot):
-    """Бот с корректной async-инициализацией когов (discord.py 2.x).
-
-    setup_hook вызывается фреймворком автоматически перед подключением
-    к шлюзу, поэтому коги регистрируются через awaited add_cog — вместо
-    устаревшего способа «add_cog внутри on_ready».
-    """
-
     def __init__(self, chat: QwenChat):
         super().__init__(command_prefix=".", intents=intents)
         self.chat = chat
 
     async def setup_hook(self):
+        # вызывается фреймворком один раз перед подключением к шлюзу —
+        # рекомендуемый способ регистрации когов вместо устаревшего add_cog в on_ready
         await self.add_cog(Tags(self))
         await self.add_cog(AI(self, self.chat))
 
@@ -40,6 +34,7 @@ class MruaBot(commands.Bot):
             status=discord.Status.online,
         )
         print(f'We have logged in as {self.user}')
+
 
 
 if __name__ == "__main__":
@@ -58,6 +53,5 @@ if __name__ == "__main__":
     chat = QwenChat(model_path = model_path, n_ctx = n_ctx, n_threads = n_threads)
     chat.warmup()
     print("Модель готова. Запускаю бота...")
-
     bot = MruaBot(chat)
     bot.run(token)

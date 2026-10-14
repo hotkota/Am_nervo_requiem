@@ -4,7 +4,6 @@ import discord
 from discord.ext import commands
 
 from qwen_model import QwenChat
-from ai_tools import TOOLS_SCHEMA, execute_tool_call
 
 
 SYSTEM_PROMPT = (
@@ -26,9 +25,6 @@ class AI(commands.Cog):
 
         # Сколько последних пар «user-assistant» хранить
         self.max_history = int(os.getenv("MAX_HISTORY", 5))
-
-        # Включены ли инструменты (поиск в интернете); выключается через .env
-        self.tools_enabled = os.getenv("AI_TOOLS_ENABLED", "true").lower() not in ("0", "false", "no", "off")
 
     async def _send_long(self, ctx, text: str):
         if not text.strip():
@@ -53,18 +49,6 @@ class AI(commands.Cog):
             # Сохраняем system, обрезаем всё лишнее с начала диалога
             del history[1:len(history) - self.max_history * 2]
 
-    @staticmethod
-    def _is_search_request(prompt: str) -> bool:
-        """Эвристика: нужен ли пользователю свежий поиск в интернете."""
-        p = prompt.lower()
-        markers = (
-            "найди", "найти", "ищи", "искать", "погугли", "поищи",
-            "в интернете", "в сети", "актуальн", "новост", "свежи",
-            "сколько сейчас", "какой сейчас", "что нового",
-            "who is", "search", "google", "latest news",
-        )
-        return any(m in p for m in markers)
-
     @commands.command(name = "mrua", aliases = ["мруа"])
     async def ask(self, ctx, *, prompt: str = ""):
         # Команда очистки истории
@@ -85,29 +69,16 @@ class AI(commands.Cog):
 
         log_context = f"user={ctx.author.display_name}({ctx.author.id})"
 
-        use_tools = self.tools_enabled and self._is_search_request(prompt)
-
         async with ctx.message.channel.typing():
             async with self.lock:
-                if use_tools:
-                    reply, new_messages = await self.chat.generate_with_tools_async(
-                        history,
-                        tools = TOOLS_SCHEMA,
-                        tool_executor = execute_tool_call,
-                        max_new_tokens = 300,
-                        log_context = log_context,
-                    )
-                    # В историю кладём и промежуточные шаги (tool-вызовы и их
-                    # результаты), чтобы модель «помнила», что уже искала
-                    history.extend(new_messages)
-                else:
-                    reply = await self.chat.generate_response_async(
-                        history,
-                        max_new_tokens = 100,
-                        log_context = log_context,
-                    )
-                    # Добавляем ответ ассистента в историю
-                    history.append({"role": "assistant", "content": reply})
+                reply = await self.chat.generate_response_async(
+                    history,
+                    max_new_tokens = 100,
+                    log_context = log_context,
+                )
+
+        # Добавляем ответ ассистента в историю
+        history.append({"role": "assistant", "content": reply})
 
         # Обрезаем до последних N пар
         self._trim_history(history)
