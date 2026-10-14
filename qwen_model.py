@@ -25,7 +25,7 @@ logger.addHandler(console_handler)
 class QwenChat:
     """Обёртка над ИИ"""
 
-    def __init__(self, model_path: str, n_ctx: int = 2-48, n_threads: int | None = None):
+    def __init__(self, model_path: str, n_ctx: int = 2048, n_threads: int | None = None):
         self.model_path = model_path
         self.n_threads = n_threads or (os.cpu_count() or 4)
 

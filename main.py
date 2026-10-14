@@ -13,22 +13,25 @@ load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix = ".", intents=intents)
+class MruaBot(commands.Bot):
+    def __init__(self, chat: QwenChat):
+        super().__init__(command_prefix=".", intents=intents)
+        self.chat = chat
 
+    async def setup_hook(self):
+        await self.add_cog(Tags(self))
+        await self.add_cog(AI(self, self.chat))
 
-@bot.event
-async def on_ready():
-    stream_url = os.getenv("STREAM_URL", "https://www.twitch.tv/hotkota")
-    await bot.change_presence(
-        activity = discord.Streaming(
-            name = "В мруа потоке",
-            url = stream_url,
-        ),
-        status = discord.Status.online,
-    )
-    await bot.add_cog(Tags(bot))
-    await bot.add_cog(AI(bot, chat))
-    print(f'We have logged in as {bot.user}')
+    async def on_ready(self):
+        stream_url = os.getenv("STREAM_URL", "https://www.twitch.tv/hotkota")
+        await self.change_presence(
+            activity=discord.Streaming(
+                name="В мруа потоке",
+                url=stream_url,
+            ),
+            status=discord.Status.online,
+        )
+        print(f'We have logged in as {self.user}')
 
 
 if __name__ == "__main__":
@@ -47,4 +50,5 @@ if __name__ == "__main__":
     chat = QwenChat(model_path = model_path, n_ctx = n_ctx, n_threads = n_threads)
     chat.warmup()
     print("Модель готова. Запускаю бота...")
+    bot = MruaBot(chat)
     bot.run(token)
