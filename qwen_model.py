@@ -36,7 +36,8 @@ class QwenChat:
             model_path = model_path,
             n_ctx = n_ctx,
             n_threads = self.n_threads,
-            n_batch = 256,
+            n_batch = 128,
+            chat_format = "chatml",
             verbose = False
         )
 
@@ -107,6 +108,11 @@ class QwenChat:
 
         # --- Метрики выхода ---
         reply = result["choices"][0]["message"]["content"].strip()
+
+        # Убираем блоки <think>...</think> и одиночные теги
+        reply = re.sub(r"<think>.*?</think>", "", reply, flags = re.DOTALL).strip()
+        reply = reply.replace("<think>", "").replace("</think>", "").strip()
+        
         reply_chars = len(reply)
 
         usage = result.get("usage", {})
@@ -122,11 +128,6 @@ class QwenChat:
             f"время: {elapsed:.2f} с | "
             f"скорость: {tokens_per_sec:.2f} ток/с"
         )
-        # Убираем блоки <think>...</think> (включая пустые)
-        reply = re.sub(r"<think>.*?</think>", "", reply, flags=re.DOTALL).strip()
-
-        # На случай, если остался открывающий или закрывающий тег без пары
-        reply = reply.replace("<think>", "").replace("</think>", "").strip()
 
         return reply
 
